@@ -243,16 +243,16 @@ impl crate::shared::Derive<{ Item::COUNT }> for Encode {
         crate_name: &Path,
         output: [TokenStream; Item::COUNT],
         ident: Ident,
-        mut generics: Generics,
+        generics: Generics,
+        mut coder_generics: Generics,
     ) -> TokenStream {
-        let input_generics = generics.clone();
-        let (impl_generics, input_generics, where_clause) = input_generics.split_for_impl();
+        let (impl_generics, input_generics, where_clause) = generics.split_for_impl();
         let input_ty = quote! { #ident #input_generics };
 
         // Encoder can't contain any lifetimes from input (which would limit reuse of encoder).
-        remove_lifetimes(&mut generics);
+        remove_lifetimes(&mut coder_generics);
         let (encoder_impl_generics, encoder_generics, encoder_where_clause) =
-            generics.split_for_impl();
+            coder_generics.split_for_impl();
 
         let [type_body, default_body, encode_body, encode_vectored_body, collect_into_body, reserve_body] =
             output;

@@ -273,4 +273,11 @@ mod tests {
         },
         B,
     }
+
+    #[derive(Encode, Decode)]
+    struct GenericSkipped<A, B: Default> {
+        present: A,
+        #[bitcode(skip)]
+        skipped: B,
+    }
 }

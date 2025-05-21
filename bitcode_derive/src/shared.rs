@@ -4,10 +4,7 @@ use crate::err;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::visit_mut::VisitMut;
-use syn::{
-    Data, DataStruct, DeriveInput, Field, Fields, GenericParam, Generics, Index, Lifetime, Path,
-    Result, Type, WherePredicate,
-};
+use syn::{Data, DataStruct, DeriveInput, Field, Fields, GenericParam, Generics, Index, Lifetime, Path, PredicateType, Result, Type, WherePredicate};
 
 type VariantIndex = u8;
 pub fn variant_index(i: usize) -> VariantIndex {
@@ -82,6 +79,7 @@ pub trait Derive<const ITEM_COUNT: usize> {
         output: [TokenStream; ITEM_COUNT],
         ident: Ident,
         generics: Generics,
+        coder_generics: Generics,
     ) -> TokenStream;
 
     fn field_attrs(
@@ -168,11 +166,37 @@ pub trait Derive<const ITEM_COUNT: usize> {
             }
             Data::Union(_) => err(&ident, "unions are not supported")?,
         };
+
+        let bound_generics = bounds.added_to(input.generics);
+        let mut coder_generics = bound_generics.clone();
+        coder_generics.params = std::mem::take(&mut coder_generics.params)
+            .into_iter()
+            .filter(|p| {
+                match p {
+                    GenericParam::Type(ty) => {
+                        coder_generics
+                            .make_where_clause()
+                            .predicates
+                            .iter()
+                            .any(|w| match w {
+                                WherePredicate::Type(PredicateType { bounded_ty: Type::Path(p), .. }) => {
+                                    p.path.is_ident(&ty.ident)
+                                }
+                                _ => false,
+                            })
+                    }
+                    // unreachable?
+                    _ => true,
+                }
+            })
+            .collect();
+
         Ok(self.derive_impl(
             &attrs.crate_name,
             output,
             ident,
-            bounds.added_to(input.generics),
+            bound_generics,
+            coder_generics,
         ))
     }
 }

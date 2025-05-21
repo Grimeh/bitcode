@@ -250,6 +250,7 @@ impl crate::shared::Derive<{ Item::COUNT }> for Decode {
         output: [TokenStream; Item::COUNT],
         ident: Ident,
         mut generics: Generics,
+        mut coder_generics: Generics,
     ) -> TokenStream {
         let input_generics = generics.clone();
         let (_, input_generics, _) = input_generics.split_for_impl();
@@ -285,10 +286,10 @@ impl crate::shared::Derive<{ Item::COUNT }> for Decode {
         let (impl_generics, _, where_clause) = combined_generics.split_for_impl();
 
         // Decoder can't contain any lifetimes from input (which would limit reuse of decoder).
-        remove_lifetimes(&mut generics);
-        generics.params.push(de_param); // Re-add de_param since remove_lifetimes removed it.
+        remove_lifetimes(&mut coder_generics);
+        coder_generics.params.push(de_param);
         let (decoder_impl_generics, decoder_generics, decoder_where_clause) =
-            generics.split_for_impl();
+            coder_generics.split_for_impl();
 
         let [mut type_body, mut default_body, populate_body, decode_in_place_body] = output;
         if type_body.is_empty() {
